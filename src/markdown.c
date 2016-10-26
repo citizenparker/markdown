@@ -14,6 +14,7 @@ typedef struct {
   ERL_NIF_TERM atom_tables;
   ERL_NIF_TERM atom_autolink;
   ERL_NIF_TERM atom_fenced_code;
+  ERL_NIF_TERM atom_skip_html;
 } markdown_priv;
 
 static ERL_NIF_TERM
@@ -27,6 +28,7 @@ to_html(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
   const ERL_NIF_TERM* tuple;
   int tuple_size;
   unsigned int extensions;
+  unsigned int html_flags;
 
   hoedown_buffer* ob;
   hoedown_document* document;
@@ -43,6 +45,7 @@ to_html(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
   priv = enif_priv_data(env);
   options = argv[1];
   extensions = 0;
+  html_flags = 0;
 
   while (enif_get_list_cell(env, options, &term, &options) != 0) {
     if (enif_get_tuple(env, term, &tuple_size, &tuple) != 0) {
@@ -67,12 +70,19 @@ to_html(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
             continue;
           }
         }
+
+        if (enif_compare(tuple[0], priv->atom_skip_html) == 0) {
+          if (enif_compare(tuple[1], priv->atom_true) == 0) {
+            html_flags |= HOEDOWN_HTML_SKIP_HTML;
+            continue;
+          }
+        }
       }
     }
   }
 
   ob = hoedown_buffer_new(OUTPUT_UNIT);
-  renderer = hoedown_html_renderer_new(0, 0);
+  renderer = hoedown_html_renderer_new(html_flags, 0);
   document = hoedown_document_new(renderer, extensions, 16);
   hoedown_document_render(document, ob, (uint8_t*) input.data, input.size);
 
@@ -102,6 +112,7 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   data->atom_tables = enif_make_atom(env, "tables");
   data->atom_autolink = enif_make_atom(env, "autolink");
   data->atom_fenced_code = enif_make_atom(env, "fenced_code");
+  data->atom_skip_html = enif_make_atom(env, "skip_html");
 
   *priv = (void*) data;
   return 0;

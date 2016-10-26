@@ -30,4 +30,13 @@ defmodule MarkdownTest do
   	html = Markdown.to_html(markdown, fenced_code: true)
   	assert html =~ ~r/<code>/
   end
+
+  test :skip_html do
+    markdown = """
+      <script>alert('oops')</script>
+    """
+
+    html = Markdown.to_html(markdown, skip_html: true)
+    assert ! (html =~ ~r/<script>/)
+  end
 end
